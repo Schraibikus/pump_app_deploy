@@ -1,0 +1,54 @@
+version: '3.8'
+services:
+  db:
+    image: mysql:8.0
+    environment:
+      MYSQL_ROOT_PASSWORD: your_password
+      MYSQL_DATABASE: pump_application_db
+      MYSQL_USER: your_user
+      MYSQL_PASSWORD: your_password
+    ports:
+      - "3306:3306"
+    volumes:
+      - mysql-data:/var/lib/mysql
+    networks:
+      - app-network
+
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    ports:
+      - "5000:5000"
+    environment:
+      DB_HOST: db
+      DB_USER: your_user
+      DB_PASSWORD: your_password
+      DB_NAME: pump_application_db
+      PORT: 5000
+    depends_on:
+      - db
+    # для запуска миграции
+    # command: ["./wait-for-db.sh", "db", "3306", "node", "dist/temp/migrate.js", "&&", "node", "dist/server.js"]
+
+    command: ["./wait-for-db.sh", "db", "3306", "node", "dist/server.js"]
+    networks:
+      - app-network
+
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    ports:
+      - "3000:80"
+    depends_on:
+      - backend
+    networks:
+      - app-network
+
+volumes:
+  mysql-data:
+
+networks:
+  app-network:
+    driver: bridge
