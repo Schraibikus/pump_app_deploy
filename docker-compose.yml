@@ -1,18 +1,22 @@
 version: '3.8'
 services:
   db:
-    image: mysql:8.0
+    image: postgres:17
     environment:
-      MYSQL_ROOT_PASSWORD: your_password
-      MYSQL_DATABASE: pump_application_db
-      MYSQL_USER: your_user
-      MYSQL_PASSWORD: your_password
+      POSTGRES_USER: your_user
+      POSTGRES_PASSWORD: your_password
+      POSTGRES_DB: pump_app_db
     ports:
-      - "3306:3306"
+      - "5432:5432"
     volumes:
-      - mysql-data:/var/lib/mysql
+      - postgres-data:/var/lib/postgresql/data
     networks:
       - app-network
+    healthcheck:
+      test: ["CMD", "pg_isready", "-U", "your_user", "-d", "pump_app_db"]
+      interval: 10s
+      retries: 5
+      start_period: 10s
 
   backend:
     build:
@@ -24,14 +28,17 @@ services:
       DB_HOST: db
       DB_USER: your_user
       DB_PASSWORD: your_password
-      DB_NAME: pump_application_db
+      DB_NAME: pump_app_db
+      DB_PORT: 5432
       PORT: 5000
     depends_on:
-      - db
+      db:
+        condition: service_healthy
     # для запуска миграции
-    # command: ["./wait-for-db.sh", "db", "3306", "node", "dist/temp/migrate.js", "&&", "node", "dist/server.js"]
+    command: ["./wait-for-db.sh", "db", "3306", "node", "dist/temp/migrate.js", "&&", "node", "dist/server.js"]
 
-    command: ["./wait-for-db.sh", "db", "3306", "node", "dist/server.js"]
+    # для запуска сервера
+    # command: ["./wait-for-db.sh", "db", "5432", "node", "dist/server.js"]
     networks:
       - app-network
 
@@ -50,7 +57,7 @@ services:
       - app-network
 
 volumes:
-  mysql-data:
+  postgres-data:
 
 networks:
   app-network:
